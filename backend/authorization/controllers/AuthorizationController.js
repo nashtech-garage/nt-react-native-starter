@@ -2,6 +2,7 @@ const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 
 const UserModel = require("../../common/models/User");
+const tokenBlocklist = require("../../common/tokenBlocklist");
 
 const { roles, jwtSecret, jwtExpirationInSeconds } = require("../../config");
 
@@ -114,5 +115,14 @@ module.exports = {
           error: err,
         });
       });
+  },
+
+  logout: (req, res) => {
+    const token = req.headers['authorization'].split(' ')[1];
+    tokenBlocklist.add(token);
+    return res.status(200).json({
+      status: true,
+      data: { message: 'Logged out successfully.' },
+    });
   },
 };

@@ -1,5 +1,6 @@
 const jwt = require("jsonwebtoken");
 const { jwtSecret } = require("../../config");
+const tokenBlocklist = require("../tokenBlocklist");
 
 module.exports = {
   check: (req, res, next) => {
@@ -38,6 +39,17 @@ module.exports = {
           message: 'Bearer token missing in the authorization headers.'
         }
       })
+    }
+
+    // IF the token has been invalidated via logout
+    // THEN return 401 Unauthorized error
+    if (tokenBlocklist.has(token)) {
+      return res.status(401).json({
+        status: false,
+        error: {
+          message: 'Token has been invalidated. Please login again.'
+        }
+      });
     }
 
     jwt.verify(token, jwtSecret, (err, user) => {

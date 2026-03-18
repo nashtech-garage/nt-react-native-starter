@@ -5,6 +5,7 @@ const AuthorizationController = require("./controllers/AuthorizationController")
 
 // Middleware Imports
 const SchemaValidationMiddleware = require("../common/middlewares/SchemaValidationMiddleware");
+const isAuthenticatedMiddleware = require("../common/middlewares/IsAuthenticatedMiddleware");
 
 // JSON Schema Imports for payload verification
 const registerPayload = require("./schemas/registerPayload");
@@ -103,6 +104,43 @@ router.post(
   "/login",
   [SchemaValidationMiddleware.verify(loginPayload)],
   AuthorizationController.login,
+);
+
+/**
+ * @swagger
+ * /logout:
+ *   post:
+ *     summary: Logout and invalidate the current token
+ *     tags: [Authorization]
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Logged out successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/SuccessResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       type: object
+ *                       properties:
+ *                         message:
+ *                           type: string
+ *                           example: Logged out successfully.
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.post(
+  "/logout",
+  [isAuthenticatedMiddleware.check],
+  AuthorizationController.logout,
 );
 
 module.exports = router;
