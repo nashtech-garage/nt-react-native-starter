@@ -24,6 +24,7 @@ const MainNavigator: React.FC<IMainNavigator> = ({ navigation }) => {
             }
         >
             <Tab.Screen name="Home" component={HomeScreen} options={{
+                navigation: navigation,
                 tabBarLabel: 'Home',
                 tabBarIcon: ({ color, size }) => (
                     <Image source={require('../../assets/images/home.png')} style={styles.icon} />
