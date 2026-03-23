@@ -3,6 +3,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SignInScreen } from './src/screens/signin-screen';
 import { CreateProfileScreen } from './src/screens/create-profile-screen';
+import { ProductDetailScreen } from './src/screens/product-detail-screen';
 import { AuthProvider } from './src/contexts/auth-context';
 import MainNavigator from './src/screens/navigator/main-navigator';
 import { Provider } from 'react-redux';
@@ -39,6 +40,11 @@ const AppContent: React.FC = () => {
           component={MainNavigator}
           options={{ title: 'ReactNativeStater' }}
         />
+        <Stack.Screen
+          name="ProductDetail"
+          component={ProductDetailScreen}
+          options={{ headerShown: false }}
+        />
         {/* <Stack.Screen
           name="Demo"
           component={DemoUseContext}
@@ -46,7 +52,7 @@ const AppContent: React.FC = () => {
         /> */}
       </Stack.Navigator>
     </NavigationContainer>
-  )
+  );
 };
 
 export default App;

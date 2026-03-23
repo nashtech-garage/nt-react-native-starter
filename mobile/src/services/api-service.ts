@@ -49,6 +49,21 @@ export type UpdateProfilePayload = {
   age?: number;
 };
 
+export type Product = {
+  id: number;
+  name: string;
+  description: string;
+  image: string;
+  price: number;
+  priceUnit: string;
+};
+
+export type ProductListResponse = {
+  status: boolean;
+  data?: Product[];
+  error?: { message?: string };
+};
+
 const authHeaders = (token: string) => ({
   Authorization: `Bearer ${token}`,
 });
@@ -66,5 +81,10 @@ export const apiService = {
   updateProfile: (token: string, body: UpdateProfilePayload) =>
     backendClient.patch<UserProfileResponse>('/user/', body, {
       headers: authHeaders(token),
+    }),
+  getProducts: (token: string, priceUnit?: string) =>
+    backendClient.get<ProductListResponse>('/product/', {
+      headers: authHeaders(token),
+      params: priceUnit && priceUnit !== 'all' ? { priceUnit } : undefined,
     }),
 };
