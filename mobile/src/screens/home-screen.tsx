@@ -254,7 +254,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#e8eaee',
     borderRadius: RADIUS.lg,
     paddingHorizontal: SPACING.xl,
-    paddingVertical: SPACING.sm,
+    height: 40,
+    minWidth: 96,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   chipActive: {
     backgroundColor: COLORS.brand,
@@ -262,6 +265,7 @@ const styles = StyleSheet.create({
   chipText: {
     color: '#4d5a6d',
     fontWeight: '600',
+    lineHeight: 18,
   },
   chipTextActive: {
     color: '#001b2c',
