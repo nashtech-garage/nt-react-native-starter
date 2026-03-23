@@ -29,10 +29,42 @@ export type RegisterPayload = {
   lastName: string;
 };
 
+export type UserProfileResponse = {
+  status: boolean;
+  data?: {
+    id: number;
+    username: string;
+    email: string;
+    age: number;
+    firstName: string;
+    lastName: string;
+    role: string;
+  };
+  error?: { message?: string };
+};
+
+export type UpdateProfilePayload = {
+  firstName?: string;
+  lastName?: string;
+  age?: number;
+};
+
+const authHeaders = (token: string) => ({
+  Authorization: `Bearer ${token}`,
+});
+
 export const apiService = {
   fetchData: () => axios.get('https://jsonplaceholder.typicode.com/photos'),
   login: (username: string, password: string) =>
     backendClient.post<LoginResponse>('/login', { username, password }),
   register: (payload: RegisterPayload) =>
     backendClient.post<LoginResponse>('/signup', payload),
+  getProfile: (token: string) =>
+    backendClient.get<UserProfileResponse>('/user/', {
+      headers: authHeaders(token),
+    }),
+  updateProfile: (token: string, body: UpdateProfilePayload) =>
+    backendClient.patch<UserProfileResponse>('/user/', body, {
+      headers: authHeaders(token),
+    }),
 };

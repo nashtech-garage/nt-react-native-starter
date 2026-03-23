@@ -12,16 +12,16 @@ interface ISignInScreen {
 }
 
 export const SignInScreen: FC<ISignInScreen> = ({ navigation }: any) => {
-  const { login, register } = useAuth();
+  const { login } = useAuth();
   const [activeTab, setActiveTab] = useState<'login' | 'signup'>('login');
   const isLogin = useMemo(() => activeTab === 'login', [activeTab]);
 
   const [username, setUsername] = useState<ITextInput>({
-    value: 'johndoe123',
+    value: '',
     error: '',
   });
   const [password, setPassword] = useState<ITextInput>({
-    value: 'cityslicka',
+    value: '',
     error: '',
   });
   const [useBiometrics, setUseBiometrics] = useState(false);
@@ -43,21 +43,6 @@ export const SignInScreen: FC<ISignInScreen> = ({ navigation }: any) => {
     navigation.replace('Main');
   }
 
-  async function onPressSignUp() {
-    setSubmitting(true);
-    setFormError(null);
-
-    const result = await register(username.value.trim(), password.value);
-    setSubmitting(false);
-
-    if (!result.ok) {
-      setFormError(result.message);
-      return;
-    }
-
-    navigation.replace('Main');
-  }
-
   return (
     <Background>
       <View style={styles.container}>
@@ -65,8 +50,14 @@ export const SignInScreen: FC<ISignInScreen> = ({ navigation }: any) => {
           <View style={styles.iconCircle}>
             <Text style={styles.iconText}>👜</Text>
           </View>
-          <Text style={styles.title}>Welcome Back</Text>
-          <Text style={styles.subtitle}>Please enter your details</Text>
+          <Text style={styles.title}>
+            {isLogin ? 'Welcome Back' : 'Create account'}
+          </Text>
+          <Text style={styles.subtitle}>
+            {isLogin
+              ? 'Please enter your details'
+              : 'Set up your profile and credentials on the next screen'}
+          </Text>
 
           <View style={styles.segmented}>
             <TouchableOpacity
@@ -101,93 +92,93 @@ export const SignInScreen: FC<ISignInScreen> = ({ navigation }: any) => {
             </TouchableOpacity>
           </View>
 
-          <Text style={styles.fieldLabel}>Username</Text>
-          <TextInput
-            placeholder={'johndoe123'}
-            returnKeyType="next"
-            value={username.value}
-            onChangeText={(text: string) =>
-              setUsername({ value: text, error: '' })
-            }
-            error={!!username.error}
-            errorText={username.error}
-            autoCapitalize="none"
-            autoCorrect={false}
-            textContentType="username"
-          />
-
-          <Text style={styles.fieldLabel}>Password</Text>
-          <TextInput
-            placeholder={'••••••••'}
-            returnKeyType="done"
-            value={password.value}
-            onChangeText={(text: string) =>
-              setPassword({ value: text, error: '' })
-            }
-            error={!!password.error}
-            errorText={password.error}
-            secureTextEntry
-          />
-
-          <View style={styles.forgotRow}>
-            <TouchableOpacity
-              onPress={() => console.log('Forgot password')}
-              activeOpacity={0.85}>
-              <Text style={styles.forgot}>Forgot Password?</Text>
-            </TouchableOpacity>
-          </View>
-
-          {formError ? <Text style={styles.subtitle}>{formError}</Text> : null}
-
-          <TouchableOpacity
-            style={styles.checkboxRow}
-            onPress={() => setUseBiometrics(v => !v)}
-            activeOpacity={0.85}>
-            <View
-              style={[
-                styles.checkbox,
-                useBiometrics ? styles.checkboxChecked : undefined,
-              ]}>
-              {useBiometrics ? (
-                <Text style={styles.checkboxTick}>✓</Text>
-              ) : null}
-            </View>
-            <Text style={styles.checkboxText}>
-              Use biometrics for faster login
-            </Text>
-          </TouchableOpacity>
-
-          <Button
-            style={styles.primaryButton}
-            onPress={() => {
-              if (isLogin) {
-                if (!submitting) {
-                  onPressSignIn();
+          {isLogin ? (
+            <>
+              <Text style={styles.fieldLabel}>Username</Text>
+              <TextInput
+                placeholder={'johndoe123'}
+                returnKeyType="next"
+                value={username.value}
+                onChangeText={(text: string) =>
+                  setUsername({ value: text, error: '' })
                 }
-                return;
-              }
-              if (!submitting) {
-                onPressSignUp();
-              }
-            }}>
-            <Text style={styles.primaryButtonText}>
-              {submitting
-                ? isLogin
-                  ? 'Signing in...'
-                  : 'Creating account...'
-                : isLogin
-                ? 'Sign In'
-                : 'Create account'}
-            </Text>
-          </Button>
+                errorText={username.error}
+                autoCapitalize="none"
+                autoCorrect={false}
+                textContentType="username"
+              />
 
-          <Button
-            style={styles.secondaryButton}
-            onPress={() => console.log('Sign in with biometrics')}>
-            <Text style={styles.secondaryButtonText}>
-              Sign in with Biometrics
-            </Text>
-          </Button>
+              <Text style={styles.fieldLabel}>Password</Text>
+              <TextInput
+                placeholder={'••••••••'}
+                returnKeyType="done"
+                value={password.value}
+                onChangeText={(text: string) =>
+                  setPassword({ value: text, error: '' })
+                }
+                errorText={password.error}
+                secureTextEntry
+              />
+
+              <View style={styles.forgotRow}>
+                <TouchableOpacity
+                  onPress={() => console.log('Forgot password')}
+                  activeOpacity={0.85}>
+                  <Text style={styles.forgot}>Forgot Password?</Text>
+                </TouchableOpacity>
+              </View>
+
+              {formError ? (
+                <Text style={styles.subtitle}>{formError}</Text>
+              ) : null}
+
+              <TouchableOpacity
+                style={styles.checkboxRow}
+                onPress={() => setUseBiometrics(v => !v)}
+                activeOpacity={0.85}>
+                <View
+                  style={[
+                    styles.checkbox,
+                    useBiometrics ? styles.checkboxChecked : undefined,
+                  ]}>
+                  {useBiometrics ? (
+                    <Text style={styles.checkboxTick}>✓</Text>
+                  ) : null}
+                </View>
+                <Text style={styles.checkboxText}>
+                  Use biometrics for faster login
+                </Text>
+              </TouchableOpacity>
+
+              <Button
+                style={styles.primaryButton}
+                onPress={() => {
+                  if (!submitting) {
+                    onPressSignIn();
+                  }
+                }}>
+                <Text style={styles.primaryButtonText}>
+                  {submitting ? 'Signing in...' : 'Sign In'}
+                </Text>
+              </Button>
+
+              <Button
+                style={styles.secondaryButton}
+                onPress={() => console.log('Sign in with biometrics')}>
+                <Text style={styles.secondaryButtonText}>
+                  Sign in with Biometrics
+                </Text>
+              </Button>
+            </>
+          ) : (
+            <Button
+              style={styles.primaryButton}
+              onPress={() => navigation.navigate('CreateProfile')}>
+              <Text style={styles.primaryButtonText}>
+                Continue to profile
+              </Text>
+            </Button>
+          )}
         </View>
       </View>
     </Background>

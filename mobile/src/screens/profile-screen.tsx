@@ -1,21 +1,108 @@
-import React from 'react';
-import {
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../contexts/auth-context';
+import TextInput from '../components/TextInput';
+import { CARD_BASE, COLORS, HEADER_BASE, RADIUS, SPACING } from '../styles/ui-tokens';
 
 interface ProfileScreenProps {
   navigation: any;
 }
 
 const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
-  const { user, logout } = useAuth();
-  const username = user?.username ?? 'John Doe';
-  const email = `${username.toLowerCase().replace(/\s+/g, '.')}@example.com`;
+  const { user, logout, refreshUser, updateProfile } = useAuth();
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [editFirst, setEditFirst] = useState('');
+  const [editLast, setEditLast] = useState('');
+  const [editAge, setEditAge] = useState('');
+  const [formError, setFormError] = useState<string | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      (async () => {
+        const result = await refreshUser();
+        if (active && !result.ok && result.message !== 'Not signed in') {
+          setFormError(result.message);
+        }
+      })();
+      return () => {
+        active = false;
+      };
+    }, [refreshUser]),
+  );
+
+  useEffect(() => {
+    if (user && !editing) {
+      setEditFirst(user.firstName ?? '');
+      setEditLast(user.lastName ?? '');
+      setEditAge(user.age != null ? String(user.age) : '');
+    }
+  }, [user, editing]);
+
+  const displayName =
+    user?.firstName || user?.lastName
+      ? [user.firstName, user.lastName].filter(Boolean).join(' ')
+      : user?.username ?? 'Member';
+
+  const email =
+    user?.email ??
+    (user?.username
+      ? `${user.username.toLowerCase().replace(/\s+/g, '.')}@example.com`
+      : '—');
+
+  const handle = user?.username
+    ? `@${user.username.toLowerCase().replace(/\s+/g, '_')}`
+    : '@—';
+
+  const avatarInitials = useMemo(() => {
+    const a = user?.firstName?.trim()?.[0];
+    const b = user?.lastName?.trim()?.[0];
+    if (a || b) {
+      return `${a ?? ''}${b ?? ''}`.toUpperCase().slice(0, 2);
+    }
+    const u = user?.username?.trim();
+    return u ? u.slice(0, 2).toUpperCase() : '?';
+  }, [user?.firstName, user?.lastName, user?.username]);
+
+  function startEdit() {
+    setFormError(null);
+    setEditFirst(user?.firstName ?? '');
+    setEditLast(user?.lastName ?? '');
+    setEditAge(user?.age != null ? String(user.age) : '');
+    setEditing(true);
+  }
+
+  function cancelEdit() {
+    setEditing(false);
+    setFormError(null);
+  }
+
+  async function saveEdit() {
+    const n = Number.parseInt(editAge, 10);
+    if (Number.isNaN(n) || n < 1 || n > 120) {
+      setFormError('Enter a valid age');
+      return;
+    }
+    if (!editFirst.trim() || !editLast.trim()) {
+      setFormError('First and last name are required');
+      return;
+    }
+    setFormError(null);
+    setSaving(true);
+    const result = await updateProfile({
+      firstName: editFirst.trim(),
+      lastName: editLast.trim(),
+      age: n,
+    });
+    setSaving(false);
+    if (!result.ok) {
+      setFormError(result.message);
+      return;
+    }
+    setEditing(false);
+  }
 
   return (
     <View style={styles.page}>
@@ -36,21 +123,14 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
         <View style={styles.card}>
           <View style={styles.avatarWrap}>
             <View style={styles.avatarCircle}>
-              <Text style={styles.avatarText}>
-                {username
-                  .split(' ')
-                  .map(n => n[0])
-                  .join('')
-                  .slice(0, 2)
-                  .toUpperCase()}
-              </Text>
+              <Text style={styles.avatarText}>{avatarInitials}</Text>
             </View>
             <View style={styles.avatarEditBadge}>
               <Text style={styles.avatarEditText}>✎</Text>
             </View>
           </View>
-          <Text style={styles.name}>{username}</Text>
-          <Text style={styles.handle}>@johndoe_official</Text>
+          <Text style={styles.name}>{displayName}</Text>
+          <Text style={styles.handle}>{handle}</Text>
           <View style={styles.premiumPill}>
             <Text style={styles.premiumText}>PREMIUM MEMBER</Text>
           </View>
@@ -59,24 +139,82 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
         <View style={styles.card}>
           <View style={styles.rowBetween}>
             <Text style={styles.sectionTitle}>Account Details</Text>
-            <TouchableOpacity activeOpacity={0.8}>
-              <Text style={styles.editText}>Edit Details</Text>
-            </TouchableOpacity>
+            {!editing ? (
+              <TouchableOpacity onPress={startEdit} activeOpacity={0.8}>
+                <Text style={styles.editText}>Edit Details</Text>
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.editActions}>
+                <TouchableOpacity onPress={cancelEdit} activeOpacity={0.8}>
+                  <Text style={styles.cancelText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => {
+                    if (!saving) {
+                      saveEdit();
+                    }
+                  }}
+                  activeOpacity={0.8}
+                  disabled={saving}>
+                  <Text style={styles.editText}>
+                    {saving ? 'Saving…' : 'Save'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
 
           <Text style={styles.label}>EMAIL ADDRESS</Text>
-          <View style={styles.emailBox}>
-            <Text style={styles.emailValue}>{email}</Text>
-          </View>
+          {editing ? (
+            <View style={styles.emailBox}>
+              <Text style={styles.emailHint}>
+                Email can’t be changed here (contact support).
+              </Text>
+              <Text style={styles.emailValue}>{email}</Text>
+            </View>
+          ) : (
+            <View style={styles.emailBox}>
+              <Text style={styles.emailValue}>{email}</Text>
+            </View>
+          )}
 
           <Text style={styles.label}>FIRST NAME</Text>
-          <Text style={styles.fieldValue}>John</Text>
+          {editing ? (
+            <TextInput
+              value={editFirst}
+              onChangeText={setEditFirst}
+              placeholder="First name"
+            />
+          ) : (
+            <Text style={styles.fieldValue}>{user?.firstName ?? '—'}</Text>
+          )}
 
           <Text style={styles.label}>LAST NAME</Text>
-          <Text style={styles.fieldValue}>Doe</Text>
+          {editing ? (
+            <TextInput
+              value={editLast}
+              onChangeText={setEditLast}
+              placeholder="Last name"
+            />
+          ) : (
+            <Text style={styles.fieldValue}>{user?.lastName ?? '—'}</Text>
+          )}
 
           <Text style={styles.label}>AGE</Text>
-          <Text style={styles.fieldValue}>28</Text>
+          {editing ? (
+            <TextInput
+              value={editAge}
+              onChangeText={setEditAge}
+              placeholder="Age"
+              keyboardType="number-pad"
+            />
+          ) : (
+            <Text style={styles.fieldValue}>
+              {user?.age != null ? String(user.age) : '—'}
+            </Text>
+          )}
+
+          {formError ? <Text style={styles.formError}>{formError}</Text> : null}
         </View>
 
         <TouchableOpacity
@@ -113,20 +251,13 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
 const styles = StyleSheet.create({
   page: {
     flex: 1,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: COLORS.pageBackground,
   },
-  header: {
-    height: 64,
-    backgroundColor: '#f3f4f6',
-    paddingHorizontal: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
+  header: HEADER_BASE,
   headerTitle: {
     fontSize: 30,
     fontWeight: '700',
-    color: '#1e2636',
+    color: COLORS.textPrimary,
   },
   headerIconButton: {
     width: 34,
@@ -136,21 +267,14 @@ const styles = StyleSheet.create({
   },
   headerIcon: {
     fontSize: 24,
-    color: '#1e2636',
+    color: COLORS.textPrimary,
   },
   content: {
-    padding: 14,
-    gap: 14,
+    padding: SPACING.lg,
+    gap: SPACING.lg,
   },
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    padding: 14,
-    shadowColor: '#000',
-    shadowOpacity: 0.03,
-    shadowOffset: { width: 0, height: 6 },
-    shadowRadius: 16,
-    elevation: 1,
+    ...CARD_BASE,
   },
   avatarWrap: {
     alignSelf: 'center',
@@ -160,7 +284,7 @@ const styles = StyleSheet.create({
   avatarCircle: {
     width: 96,
     height: 96,
-    borderRadius: 48,
+    borderRadius: RADIUS.circle,
     backgroundColor: '#f1ad8e',
     borderWidth: 4,
     borderColor: '#d9d2c9',
@@ -178,7 +302,7 @@ const styles = StyleSheet.create({
     right: -2,
     width: 28,
     height: 28,
-    borderRadius: 14,
+    borderRadius: RADIUS.lg,
     backgroundColor: '#14d7e6',
     alignItems: 'center',
     justifyContent: 'center',
@@ -194,7 +318,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 35,
     fontWeight: '700',
-    color: '#1e2636',
+    color: COLORS.textPrimary,
   },
   handle: {
     textAlign: 'center',
@@ -204,14 +328,14 @@ const styles = StyleSheet.create({
   },
   premiumPill: {
     alignSelf: 'center',
-    marginTop: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 14,
+    marginTop: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs,
+    borderRadius: RADIUS.lg,
     backgroundColor: '#e6f2f3',
   },
   premiumText: {
-    color: '#08cdd2',
+    color: COLORS.brand,
     fontWeight: '700',
     fontSize: 14,
     letterSpacing: 0.4,
@@ -221,41 +345,61 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
+  editActions: {
+    flexDirection: 'row',
+    gap: 16,
+    alignItems: 'center',
+  },
+  cancelText: {
+    color: COLORS.textSecondary,
+    fontWeight: '600',
+    fontSize: 14,
+  },
   sectionTitle: {
     fontSize: 35,
     fontWeight: '700',
-    color: '#1e2636',
+    color: COLORS.textPrimary,
   },
   editText: {
-    color: '#08cdd2',
+    color: COLORS.brand,
     fontWeight: '600',
     fontSize: 14,
   },
   label: {
     marginTop: 14,
-    color: '#9ba7b7',
+    color: COLORS.textMuted,
     letterSpacing: 0.6,
     fontSize: 13,
     fontWeight: '600',
   },
   emailBox: {
-    marginTop: 8,
-    borderRadius: 12,
+    marginTop: SPACING.sm,
+    borderRadius: RADIUS.md,
     borderWidth: 1,
-    borderColor: '#d2d8e1',
+    borderColor: COLORS.borderSubtle,
     paddingVertical: 10,
-    paddingHorizontal: 12,
-    backgroundColor: '#f8f9fb',
+    paddingHorizontal: SPACING.md,
+    backgroundColor: COLORS.surfaceSubtle,
+  },
+  emailHint: {
+    fontSize: 12,
+    color: COLORS.textMuted,
+    marginBottom: 6,
   },
   emailValue: {
-    color: '#66758a',
+    color: COLORS.textSecondary,
     fontSize: 14,
   },
   fieldValue: {
     marginTop: 6,
     fontSize: 18,
-    color: '#1e2636',
+    color: COLORS.textPrimary,
     fontWeight: '500',
+  },
+  formError: {
+    marginTop: 12,
+    color: COLORS.danger,
+    fontSize: 14,
   },
   actionRow: {
     flexDirection: 'row',
@@ -270,7 +414,7 @@ const styles = StyleSheet.create({
   actionIconBox: {
     width: 36,
     height: 36,
-    borderRadius: 9,
+    borderRadius: RADIUS.sm,
     backgroundColor: '#f0f3f8',
     alignItems: 'center',
     justifyContent: 'center',
@@ -280,7 +424,7 @@ const styles = StyleSheet.create({
   },
   actionText: {
     fontSize: 18,
-    color: '#1e2636',
+    color: COLORS.textPrimary,
     fontWeight: '500',
   },
   chevron: {
@@ -297,7 +441,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   logoutText: {
-    color: '#ff4d52',
+    color: COLORS.danger,
     fontSize: 18,
     fontWeight: '500',
   },
