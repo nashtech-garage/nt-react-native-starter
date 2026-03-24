@@ -4,7 +4,9 @@ import React, {
   ReactNode,
   useState,
   useCallback,
+  useEffect,
 } from 'react';
+import * as Keychain from 'react-native-keychain';
 import { User } from '../models/user';
 import {
   apiService,
@@ -47,6 +49,7 @@ interface AuthContextProps {
 }
 
 const AuthContext = createContext<AuthContextProps | undefined>(undefined);
+const TOKEN_SERVICE = 'auth_token';
 
 interface AuthProviderProps {
   children: ReactNode;
@@ -55,6 +58,37 @@ interface AuthProviderProps {
 const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const credentials = await Keychain.getGenericPassword({
+          service: TOKEN_SERVICE,
+        });
+        if (!credentials || !active) {
+          return;
+        }
+
+        const restoredToken = credentials.password;
+        setToken(restoredToken);
+
+        const response = await apiService.getProfile(restoredToken);
+        const payload = response.data;
+        if (payload?.status && payload.data && active) {
+          setUser(
+            mapApiUserToUser(payload.data as unknown as Record<string, unknown>),
+          );
+        }
+      } catch {
+        await Keychain.resetGenericPassword({ service: TOKEN_SERVICE });
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const login: AuthContextProps['login'] = async (
     username: string,
@@ -67,6 +101,9 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (payload?.status && payload.data?.token) {
         setUser(mapApiUserToUser(payload.data.user));
         setToken(payload.data.token);
+        void Keychain.setGenericPassword('token', payload.data.token, {
+          service: TOKEN_SERVICE,
+        });
         return { ok: true } as const;
       }
 
@@ -93,6 +130,9 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (payload?.status && payload.data?.token) {
         setUser(mapApiUserToUser(payload.data.user));
         setToken(payload.data.token);
+        void Keychain.setGenericPassword('token', payload.data.token, {
+          service: TOKEN_SERVICE,
+        });
         return { ok: true } as const;
       }
 
@@ -169,6 +209,7 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = () => {
     setUser(null);
     setToken(null);
+    void Keychain.resetGenericPassword({ service: TOKEN_SERVICE });
   };
 
   const contextValue: AuthContextProps = {
