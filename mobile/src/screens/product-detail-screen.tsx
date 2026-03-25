@@ -190,7 +190,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     color: COLORS.textPrimary,
-    fontSize: 30,
+    fontSize: 20,
     fontWeight: '700',
     marginBottom: SPACING.md,
   },

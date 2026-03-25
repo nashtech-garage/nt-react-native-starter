@@ -247,7 +247,7 @@ const styles = StyleSheet.create({
     color: COLORS.textPrimary,
   },
   chipsContainer: {
-    paddingVertical: SPACING.md,
+    paddingVertical: SPACING.xl * 2,
     gap: SPACING.sm,
   },
   chip: {
