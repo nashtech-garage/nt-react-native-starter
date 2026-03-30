@@ -12,7 +12,7 @@ interface ISignInScreen {
 }
 
 export const SignInScreen: FC<ISignInScreen> = ({ navigation }: any) => {
-  const { login } = useAuth();
+  const { login, biometricLogin } = useAuth();
   const [activeTab, setActiveTab] = useState<'login' | 'signup'>('login');
   const isLogin = useMemo(() => activeTab === 'login', [activeTab]);
 
@@ -40,6 +40,16 @@ export const SignInScreen: FC<ISignInScreen> = ({ navigation }: any) => {
       return;
     }
 
+    navigation.replace('Main');
+  }
+
+  async function onPressBiometric() {
+    setFormError(null);
+    const result = await biometricLogin();
+    if (!result.ok) {
+      setFormError(result.message);
+      return;
+    }
     navigation.replace('Main');
   }
 
@@ -164,7 +174,11 @@ export const SignInScreen: FC<ISignInScreen> = ({ navigation }: any) => {
 
               <Button
                 style={styles.secondaryButton}
-                onPress={() => console.log('Sign in with biometrics')}>
+                onPress={() => {
+                  if (!submitting) {
+                    onPressBiometric();
+                  }
+                }}>
                 <Text style={styles.secondaryButtonText}>
                   Sign in with Biometrics
                 </Text>
@@ -174,9 +188,7 @@ export const SignInScreen: FC<ISignInScreen> = ({ navigation }: any) => {
             <Button
               style={styles.primaryButton}
               onPress={() => navigation.navigate('CreateProfile')}>
-              <Text style={styles.primaryButtonText}>
-                Continue to profile
-              </Text>
+              <Text style={styles.primaryButtonText}>Continue to profile</Text>
             </Button>
           )}
         </View>

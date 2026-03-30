@@ -21,6 +21,7 @@ describe('SignInScreen', () => {
       user: null,
       token: null,
       login: jest.fn(),
+      biometricLogin: jest.fn().mockResolvedValue({ ok: true }),
       register: jest.fn(),
       logout: jest.fn(),
       refreshUser: jest.fn(),
@@ -84,7 +85,8 @@ describe('SignInScreen', () => {
   });
 
   it('handles login form interactions and utility actions', () => {
-    const { screen } = setup();
+    const biometricLogin = jest.fn().mockResolvedValue({ ok: true });
+    const { screen } = setup({ biometricLogin });
 
     fireEvent.press(screen.getByText('Login'));
     fireEvent.changeText(screen.getByPlaceholderText('johndoe123'), 'alice');
@@ -96,6 +98,6 @@ describe('SignInScreen', () => {
     expect(screen.getByDisplayValue('alice')).toBeTruthy();
     expect(screen.getByDisplayValue('pass123')).toBeTruthy();
     expect(consoleSpy).toHaveBeenCalledWith('Forgot password');
-    expect(consoleSpy).toHaveBeenCalledWith('Sign in with biometrics');
+    expect(biometricLogin).toHaveBeenCalled();
   });
 });

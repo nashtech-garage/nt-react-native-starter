@@ -8,6 +8,7 @@ import React, {
 } from 'react';
 import * as Keychain from 'react-native-keychain';
 import { User } from '../models/user';
+import { biometricModule } from '../native/biometric-module';
 import {
   apiService,
   RegisterPayload,
@@ -40,12 +41,11 @@ interface AuthContextProps {
     payload: RegisterPayload,
   ) => Promise<{ ok: true } | { ok: false; message: string }>;
   logout: () => void;
-  refreshUser: () => Promise<
-    { ok: true } | { ok: false; message: string }
-  >;
+  refreshUser: () => Promise<{ ok: true } | { ok: false; message: string }>;
   updateProfile: (
     payload: UpdateProfilePayload,
   ) => Promise<{ ok: true } | { ok: false; message: string }>;
+  biometricLogin: () => Promise<{ ok: true } | { ok: false; message: string }>;
 }
 
 const AuthContext = createContext<AuthContextProps | undefined>(undefined);
@@ -77,7 +77,9 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const payload = response.data;
         if (payload?.status && payload.data && active) {
           setUser(
-            mapApiUserToUser(payload.data as unknown as Record<string, unknown>),
+            mapApiUserToUser(
+              payload.data as unknown as Record<string, unknown>,
+            ),
           );
         }
       } catch {
@@ -101,9 +103,9 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (payload?.status && payload.data?.token) {
         setUser(mapApiUserToUser(payload.data.user));
         setToken(payload.data.token);
-        void Keychain.setGenericPassword('token', payload.data.token, {
+        Keychain.setGenericPassword('token', payload.data.token, {
           service: TOKEN_SERVICE,
-        });
+        }).catch(() => undefined);
         return { ok: true } as const;
       }
 
@@ -130,9 +132,9 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (payload?.status && payload.data?.token) {
         setUser(mapApiUserToUser(payload.data.user));
         setToken(payload.data.token);
-        void Keychain.setGenericPassword('token', payload.data.token, {
+        Keychain.setGenericPassword('token', payload.data.token, {
           service: TOKEN_SERVICE,
-        });
+        }).catch(() => undefined);
         return { ok: true } as const;
       }
 
@@ -206,10 +208,56 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     [token],
   );
 
+  const biometricLogin: AuthContextProps['biometricLogin'] = async () => {
+    try {
+      const available = await biometricModule.isAvailable();
+      if (!available) {
+        return {
+          ok: false,
+          message: 'Biometric authentication is not available.',
+        } as const;
+      }
+
+      await biometricModule.authenticate('Confirm your identity to sign in');
+      const credentials = await Keychain.getGenericPassword({
+        service: TOKEN_SERVICE,
+      });
+
+      if (!credentials) {
+        return {
+          ok: false,
+          message:
+            'No saved session found. Please sign in with password first.',
+        } as const;
+      }
+
+      const restoredToken = credentials.password;
+      const response = await apiService.getProfile(restoredToken);
+      const payload = response.data;
+      if (payload?.status && payload.data) {
+        setToken(restoredToken);
+        setUser(
+          mapApiUserToUser(payload.data as unknown as Record<string, unknown>),
+        );
+        return { ok: true } as const;
+      }
+
+      return {
+        ok: false,
+        message: String(payload?.error?.message ?? 'Biometric sign in failed'),
+      } as const;
+    } catch (e: any) {
+      const message = e?.message ?? 'Biometric sign in failed';
+      return { ok: false, message: String(message) } as const;
+    }
+  };
+
   const logout = () => {
     setUser(null);
     setToken(null);
-    void Keychain.resetGenericPassword({ service: TOKEN_SERVICE });
+    Keychain.resetGenericPassword({ service: TOKEN_SERVICE }).catch(
+      () => undefined,
+    );
   };
 
   const contextValue: AuthContextProps = {
@@ -220,6 +268,7 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     logout,
     refreshUser,
     updateProfile,
+    biometricLogin,
   };
 
   return (

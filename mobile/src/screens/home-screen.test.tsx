@@ -3,6 +3,7 @@ import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { HomeScreen } from './home-screen';
 import { useAuth } from '../contexts/auth-context';
 import { apiService } from '../services/api-service';
+import { wishlistModule } from '../native/wishlist-module';
 
 jest.mock('../contexts/auth-context', () => ({
   useAuth: jest.fn(),
@@ -14,8 +15,17 @@ jest.mock('../services/api-service', () => ({
   },
 }));
 
+jest.mock('../native/wishlist-module', () => ({
+  wishlistModule: {
+    getWishlistProductIds: jest.fn(),
+    addProduct: jest.fn(),
+    removeProduct: jest.fn(),
+  },
+}));
+
 const mockedUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
 const mockedApiService = apiService as jest.Mocked<typeof apiService>;
+const mockedWishlistModule = wishlistModule as jest.Mocked<typeof wishlistModule>;
 
 const PRODUCTS = [
   {
@@ -53,6 +63,7 @@ describe('HomeScreen', () => {
         ? { status: true, data: products as any[] }
         : { status: false, error: { message: 'Could not load products' } },
     } as any);
+    mockedWishlistModule.getWishlistProductIds.mockResolvedValue([]);
 
     const screen = render(<HomeScreen navigation={navigation} />);
     return { screen, navigation };
@@ -76,6 +87,7 @@ describe('HomeScreen', () => {
     await waitFor(() => {
       expect(screen.getByText('Echo Buds')).toBeTruthy();
       expect(mockedApiService.getProducts).toHaveBeenCalledWith('token', 'all');
+      expect(mockedWishlistModule.getWishlistProductIds).toHaveBeenCalled();
     });
 
     fireEvent.press(screen.getByText('Echo Buds'));

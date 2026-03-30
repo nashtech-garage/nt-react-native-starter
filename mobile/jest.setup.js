@@ -16,6 +16,11 @@ jest.mock('@react-navigation/native', () => {
     NavigationContainer: ({ children }) => React.createElement(React.Fragment, null, children),
     useNavigation: () => ({ navigate: jest.fn(), goBack: jest.fn() }),
     useRoute: () => ({ params: {} }),
+    useFocusEffect: (cb) => {
+      React.useEffect(() => {
+        cb();
+      }, [cb]);
+    },
   };
 });
 

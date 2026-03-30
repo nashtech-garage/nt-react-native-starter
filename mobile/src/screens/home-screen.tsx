@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useAuth } from '../contexts/auth-context';
 import { apiService, Product } from '../services/api-service';
+import { wishlistModule } from '../native/wishlist-module';
 import { CARD_BASE, COLORS, RADIUS, SPACING } from '../styles/ui-tokens';
 
 interface HomeScreenProps {
@@ -39,6 +40,7 @@ function formatPrice(value: number, unit: string) {
 const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const { user, token } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
+  const [wishlistIds, setWishlistIds] = useState<number[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -56,10 +58,14 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     }
     setError(null);
     try {
-      const response = await apiService.getProducts(token, activeUnit);
+      const [response, wishlist] = await Promise.all([
+        apiService.getProducts(token, activeUnit),
+        wishlistModule.getWishlistProductIds(),
+      ]);
       const payload = response.data;
       if (payload?.status && payload.data) {
         setProducts(payload.data);
+        setWishlistIds(wishlist);
       } else {
         setError(payload?.error?.message ?? 'Could not load products');
       }
@@ -90,6 +96,24 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       return haystack.includes(keyword);
     });
   }, [products, search]);
+
+  async function onToggleWishlist(productId: number) {
+    const previous = wishlistIds;
+    const exists = wishlistIds.includes(productId);
+    const next = exists
+      ? wishlistIds.filter(id => id !== productId)
+      : [...wishlistIds, productId];
+    setWishlistIds(next);
+    try {
+      if (exists) {
+        await wishlistModule.removeProduct(productId);
+      } else {
+        await wishlistModule.addProduct(productId);
+      }
+    } catch {
+      setWishlistIds(previous);
+    }
+  }
 
   if (!token) {
     return (
@@ -160,8 +184,18 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
               <Text style={styles.productPrice}>
                 {formatPrice(item.price, item.priceUnit)}
               </Text>
-              <TouchableOpacity style={styles.addButton} activeOpacity={0.9}>
-                <Text style={styles.addButtonText}>+</Text>
+              <TouchableOpacity
+                style={[
+                  styles.addButton,
+                  wishlistIds.includes(item.id)
+                    ? styles.addButtonSaved
+                    : undefined,
+                ]}
+                activeOpacity={0.9}
+                onPress={() => onToggleWishlist(item.id)}>
+                <Text style={styles.addButtonText}>
+                  {wishlistIds.includes(item.id) ? '✓' : '+'}
+                </Text>
               </TouchableOpacity>
             </View>
           </TouchableOpacity>
@@ -316,6 +350,9 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.brand,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  addButtonSaved: {
+    backgroundColor: '#7de8a9',
   },
   addButtonText: {
     color: COLORS.brandDark,

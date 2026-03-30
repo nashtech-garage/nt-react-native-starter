@@ -7,10 +7,6 @@ jest.mock('../contexts/auth-context', () => ({
   useAuth: jest.fn(),
 }));
 
-jest.mock('@react-navigation/native', () => ({
-  useFocusEffect: (cb: () => void) => cb(),
-}));
-
 const mockedUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
 
 describe('ProfileScreen', () => {
