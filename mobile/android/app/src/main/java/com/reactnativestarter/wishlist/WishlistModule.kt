@@ -23,7 +23,7 @@ class WishlistModule(private val reactContext: ReactApplicationContext) :
 
   @ReactMethod
   fun getWishlistProductIds(promise: Promise) {
-    try {
+    try { 
       val db = dbHelper.readableDatabase
       val cursor =
         db.query(
